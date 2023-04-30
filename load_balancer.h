@@ -3,7 +3,6 @@
 #define LOAD_BALANCER_H_
 
 #include "server.h"
-//#include "HashTable.h"
 
 typedef struct hash_ring_elem hash_ring_elem;
 struct hash_ring_elem {
@@ -27,8 +26,12 @@ struct load_balancer {
  */
 load_balancer *init_load_balancer();
 
+unsigned int compare_with_server(void *a, void *b);
 
-int find_new_position(load_balancer *main, int server_id);
+unsigned int compare_with_key(void *a, void *b);
+
+int find_new_position(load_balancer *main, void *data,
+		unsigned int (*compare_function)(void *, void *));
 
 /**
  * free_load_balancer() - frees the memory of every field that is related to the
@@ -103,3 +106,4 @@ void loader_add_server(load_balancer *main, int server_id);
 void loader_remove_server(load_balancer *main, int server_id);
 
 #endif /* LOAD_BALANCER_H_ */
+

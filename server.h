@@ -54,3 +54,4 @@ void server_remove(server_memory *server, char *key);
 char *server_retrieve(server_memory *server, char *key);
 
 #endif /* SERVER_H_ */
+

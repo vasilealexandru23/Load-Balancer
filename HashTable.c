@@ -1,10 +1,5 @@
 #include "HashTable.h"
 
-/*
- * Functii de comparare a cheilor:
- */
-
-
 int compare_function_strings(void *a, void *b)
 {
 	char *str_a = (char *)a;
@@ -13,7 +8,8 @@ int compare_function_strings(void *a, void *b)
 	return strcmp(str_a, str_b);
 }
 
-unsigned int hash_function_servers(void *a) {
+unsigned int hash_function_servers(void *a)
+{
     unsigned int uint_a = *((unsigned int *)a);
 
     uint_a = ((uint_a >> 16u) ^ uint_a) * 0x45d9f3b;
@@ -22,7 +18,8 @@ unsigned int hash_function_servers(void *a) {
     return uint_a;
 }
 
-unsigned int hash_function_key(void *a) {
+unsigned int hash_function_key(void *a)
+{
     unsigned char *puchar_a = (unsigned char *)a;
     unsigned int hash = 5381;
     int c;
@@ -33,9 +30,6 @@ unsigned int hash_function_key(void *a) {
     return hash;
 }
 
-/*
- * Functii de hashing:
- */
 void key_val_free_function(void *data)
 {
 	free(((info *)data)->key);
@@ -103,30 +97,22 @@ hashtable_t *ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	ll_add_nth_node(ht->buckets[index], 0, &new_node);
 	ht->size++;
 	// Verific daca am ajuns la 75% din capacitatea dictionarului.
-	if (4 * ht->size >= 3 * ht->hmax) {
-		hashtable_t *new_ht = ht_create(2 * ht->hmax, ht->hash_function,
-										ht->compare_function,
-										ht->key_val_free_function);
-		for (unsigned int i = 0; i < ht->hmax; ++i) {
-			ll_node_t *prev = NULL;
-			ll_node_t *current = ht->buckets[i]->head;
-			while (current != NULL) {
-				info *data = ((info *)current->data);
-				new_ht = ht_put(new_ht, data->key, strlen((char *)data->key) + 1,
-								data->value, strlen((char *)data->value) + 1);
-				free(((info *)(current->data))->key);
-				free(((info *)(current->data))->value);
-				prev = current;
-				current = current->next;
-				free(prev->data);
-				free(prev);
-			}
-			free(ht->buckets[i]);
-		}
-		free(ht->buckets);
-		free(ht);
-		return new_ht;
-	}
+	// if (4 * ht->size >= 3 * ht->hmax) {
+	// 	hashtable_t *new_ht = ht_create(2 * ht->hmax, ht->hash_function,
+	// 									ht->compare_function,
+	// 									ht->key_val_free_function);
+	// 	for (unsigned int i = 0; i < ht->hmax; ++i) {
+	// 		ll_node_t *current = ht->buckets[i]->head;
+	// 		while (current != NULL) {
+	// 			info *data = ((info *)current->data);
+	// 			new_ht = ht_put(new_ht, data->key, strlen((char *)data->key) + 1,
+	// 							data->value, strlen((char *)data->value) + 1);
+	// 			current = current->next;
+	// 		}
+	// 	}
+	// 	ht_free(ht);
+	// 	return new_ht;
+	// }
 	return ht;
 }
 
@@ -140,8 +126,8 @@ hashtable_t *ht_remove_entry(hashtable_t *ht, void *key)
 		if (!ht->compare_function(current_key, key)) {
 			ll_node_t *remove = ll_remove_nth_node(ht->buckets[index], location);
 			ht->key_val_free_function(remove->data);
-			free(remove);
-			remove = NULL;
+			// free(remove);
+			// remove = NULL;
 			if (ht->buckets[index]->size == 0)
 				ht->size--;
 		}
@@ -149,6 +135,7 @@ hashtable_t *ht_remove_entry(hashtable_t *ht, void *key)
 		current = current->next;
 	}
 	// Verific daca am ajuns la 25% din capacitatea dictionarului.
+	/*
 	if (ht->hmax >= 4 * ht->size) {
 		hashtable_t *new_ht = ht_create(ht->hmax / 2, ht->hash_function,
 						ht->compare_function,
@@ -173,6 +160,7 @@ hashtable_t *ht_remove_entry(hashtable_t *ht, void *key)
 		free(ht);
 		return new_ht;
 	}
+	*/
 	return ht;
 }
 

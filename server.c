@@ -6,6 +6,7 @@
 server_memory *init_server_memory()
 {
 	server_memory *server = malloc(sizeof(server_memory));
+	DIE(!server, "Malloc server_memory failed!");
 	server->storage = ht_create(HMAX, hash_function_key,
 		compare_function_strings, key_val_free_function);	
 	return server;

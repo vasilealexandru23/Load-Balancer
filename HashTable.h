@@ -1,7 +1,7 @@
 #ifndef __HASHTABLE_H__
 #define __HASHTABLE_H__
 #define MAX_STRING_SIZE	256
-#define HMAX 1
+#define HMAX 10
 #include "LinkedList.h"
 typedef struct info info;
 struct info {
@@ -49,3 +49,4 @@ hashtable_t *ht_remove_entry(hashtable_t *ht, void *key);
 void ht_free(hashtable_t *ht);
 
 #endif // __HASHTABLE_H__
+
