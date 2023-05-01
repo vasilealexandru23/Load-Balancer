@@ -1,66 +1,32 @@
 <img align="right" src="https://ocw.cs.pub.ro/courses//res/sigla_sd.png" width="150" heigh="150">
 
-**Nume: Vasile Alexandru-Gabriel**  
-**Grupă: 314CA**
+**Name: Vasile Alexandru-Gabriel**  
+**Group: 314CA**
 
-## Virtual Memory Allocator (Tema 1)
+## Load Balancer (Homework 2)
 
-### Descriere:
+### Description:
 
-* Tema propune implementarea unui alocator de memorie care are rolul
-de a rezerva memorie, la nivel de biblioteca, traditional prin apeluri
-de memorie precum malloc() sau calloc(). Acestea marchează ca fiind folosite anumite zone de memorie dintr-un pool de bytes prealocat, numit arenă. Deasemenea, alocatorul de memorie se ocupă și cu eliberarea zonelor rezervate, apelul de bibliotecă aferent fiind free().
+* The topic consists in the implementation of a **Load Balancer** using **Consistent Hashing**. This is a frequently used mechanism in distributed systems and has the advantage of fulfilling the *minimal disruption constraint*, i.e. minimizing the number of transfers required when a server is stopped or one is started. Specifically, when a server is down, only the objects on that server need to be redistributed to nearby servers. Similarly, when a new server is added, it will only fetch objects from a limited number of servers, the neighboring ones. 
 
-* Descrierea implementarii comenzilor: 
-	* **ALLOC_ARENA** : Alocam dinamic memoria folosita pentru structura de arena
-	si pentru lista dubla inlantuita in care vom pastra nodurile, care vor contine
-	structuri de tip block_t.
+* Description of the implementation of the commands:
+	* **loader_store(char \*key, char \*value)** : Function by which a product is stored on one of the available servers. It is done by searching on the hashring the server whose hash is higher than the hash of the key of the object to be
+	added (with binary search) and then calling the function that store an object
+	into a hashmap.
 
-	* **DEALLOC_ARENA** : Eliberam absolut toate resursele folosite de la inceputul
-	programului. Parcurgem fiecare lista in parte si eliberam, pe rand, fiecare
-	nod impreuna cu datele din el.
+	* **loader_retrieve(char\* key)** : 
 
-	* **ALLOC_BLOCK** : Marcam o noua zona de memorie in arena, cu datele extrase
-	din inputul dat de utilizator. Verificam daca datele extrase sunt valide, iar
-	in caz contrar afisam un mesaj de eroare. Mai departe, creez structura de block
-	impreuna cu cea de miniblock, din interiorul ei. Cum nodurile din lista de
-	blockuri sunt ordonate (dupa adresa de start), trebuie sa aflam pozitia pe care
-	vom insera nodul in lista de blockuri. Mai departe, verificam tangenta la stanga
-	si dreapta. Pentru tangenta la dreapta, stergem blockul respectiv din lista de
-	blockuri si facem conexiunile manual dintre listele de miniblockuri. Adaugam
-	noul block in lista de blockuri. Pentru tangenta la stanga, sterem blockul abia
-	adaugat si facem conexiunile necesare intre miniblockuri. In ambele cazuri de
-	tangenta avem grija si dam update la sizeurile blockurilor si listelor de
-	miniblockuri.
+	* **loader_add_server(int server_id)** : 
 
-	* **FREE BLOCK** : In aceasta functie cautam blockul care contine miniblockul
-	cu adresa data de utilizator. In cazul in care cautarea s - a terminat si blockul nu a fost gasit afisam un mesaj de eroare. Dupa ce am gasit blockul care contine miniblockul corespunzator, distingem doua cazuri. Primul il constituie cel in care miniblockul se afla fie la inceputul fie la sfarsitul 
-	blockului curent, caz in care il eliminam din lista de miniblockuri, actualizam dimensiunea blockului din care provine si verifiam daca blockul a ramas gol sau nu, caz pentru care, daca a ramas gol, il stergem din lista de blockuri si
-	eliberam memoria alocata. Pentru al doilea caz, avem miniblockul in mijlocul listei de miniblockuri. Construim un nou block, in care adaugam manual lista de miniblockuri corespunzatoare (cea care incepe de la nodul urmator celui sters)
-	si il adaugam in lista de blockuri.
+	* **loader_remove_server(int server_id)** : 
 
-	* **CHECK_VALID_ZONE** : Verificam daca miniblockul de la care incepe adresa data de utilizator este valid(are permisiuni de citire) si este suficient de "mare", adica acopera intreg intervalul dat de utilizator pentru afisare (in caz contrarafisam mesajul de overflow).
+	* **server_store(char\* key, char\* value)** : 
 
-	* **READ** : Verificam daca miniblockul de la care incepe adresa data de
-	utilizator este valid(prin functia descrisa anterior). Parcurgem blockurile
-	pana la cel care contine miniblockul dat de utilizator. Urmeaza parcurgerea
-	miniblockurilor si afisarea caracter cu caracter a datelor din rw_buffer.
+	* **server_retrieve(char\* key)** : 
 
-	* **WRITE** : Verificam daca miniblockul de la care incepe adresa data de
-	utilizator este valid(prin functia descrisa anterior). Parcurgem blockurile
-	pana la cel care contine miniblockul dat de utilizator. Urmeaza parcurgerea
-	miniblockurilor si introducerea caracter cu caracter a datelor in rw_buffer.
+	* **server_remove(char\* key)** : 
 
-	* **PMAP** : Functie prin care afisam toate informatiile despre arena incarcata
-	in memorie. Parcurgem toate blockurile, afisam informatiile cerute de utilizator
-	impreuna cu miniblockurile in formatul impus.
-
-	* **MPROTECT** : Functie prin care atribuim noi permisiuni unui anumit miniblock. Incepem prin a cauta miniblockul cu adresa impusa de utilizator
-	prin parcurgerea blockurilor, apoi pentru fiecare parcurgem lista de miniblockuri, iar in cazul gasirii miniblockului respectiv, schimbam permisiunile. Daca miniblockul nu a fost gasit, afisam la final un mesaj de eroare.
-
-* **Organizarea fisierelor** : In organizarea fisierelor, am pastrat strict comenzile descrise in tema in fisierul original (vma.c). Restul comenzilor ajutatoare functiilor din tema se afla in fisiere diferite (arena_utils.c,
-block_utils.c).
-
+* **Organizarea fisierelor** : 
 
 ### Comentarii asupra temei:
 

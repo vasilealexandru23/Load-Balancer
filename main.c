@@ -59,7 +59,8 @@ void apply_requests(FILE* input_file) {
 
 			int index_server = 0;
 			loader_store(main_server, key, value, &index_server);
-			printf("Stored %s on server %d.\n", value, main_server->hash_ring[index_server].origin_server_id);
+			printf("Stored %s on server %d.\n", value,
+				main_server->hash_ring[index_server].origin_server_id);
 
 			memset(key, 0, sizeof(key));
 			memset(value, 0, sizeof(value));
@@ -109,4 +110,3 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
-

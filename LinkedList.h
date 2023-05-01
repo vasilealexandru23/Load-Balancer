@@ -1,5 +1,6 @@
-#ifndef __LINKED_LIST_H__
-#define __LINKED_LIST_H__
+/* Copyright 2023 <> */
+#ifndef LINKEDLIST_H_
+#define LINKEDLIST_H_
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,5 +44,5 @@ unsigned int ll_get_size(linked_list_t* list);
 
 void ll_free(linked_list_t** pp_list);
 
-#endif // __LINKED_LIST_H__
 
+#endif /* LINKEDLIST_H_ */

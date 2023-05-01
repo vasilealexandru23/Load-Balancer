@@ -1,3 +1,4 @@
+/* Copyright 2023 <> */
 #include <stdio.h>
 #include "LinkedList.h"
 
@@ -104,4 +105,3 @@ void ll_free(linked_list_t** pp_list)
 	free(*pp_list);
 	*pp_list = NULL;
 }
-

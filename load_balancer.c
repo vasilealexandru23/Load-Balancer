@@ -12,14 +12,14 @@
 
 load_balancer *init_load_balancer()
 {
-	// Alloc and initialize the load balancer.
-	load_balancer *main = malloc(sizeof(load_balancer));
-	DIE(!main, "Malloc load_balancer failed!");
-	main->number_servers = 0;
-	main->ring_size = 0;
-	main->hash_ring = calloc(MAX_HASH_RING_SIZE, sizeof(hash_ring_elem));
-	DIE(!main->hash_ring, "Malloc hashring failed!");
-	return main;
+	/* Alloc and initialize the load balancer. */
+	load_balancer *main_server = malloc(sizeof(load_balancer));
+	DIE(!main_server, "Malloc load_balancer failed!");
+	main_server->number_servers = 0;
+	main_server->ring_size = 0;
+	main_server->hash_ring = calloc(MAX_HASH_RING_SIZE, sizeof(hash_ring_elem));
+	DIE(!main_server->hash_ring, "Malloc hashring failed!");
+	return main_server;
 }
 
 unsigned int compare_with_server(void *a, void *b)
@@ -45,96 +45,116 @@ int find_new_position(load_balancer *main, void *data,
 			high = middle;
 	}
 
+	int overflow = (compare_function == compare_with_server);
 	if (compare_function(&(main->hash_ring[low].new_id), data))
-		low = (low + 1) % (main->ring_size + (compare_function == compare_with_server));
+		low = (low + 1) % (main->ring_size + overflow);
 
 	return low;
 }
 
 void loader_add_server(load_balancer *main, int server_id)
 {
-	// Create the server with all the duplicates.
+	/* Create the server with all the duplicates. */
 	for (unsigned int copies = 0; copies < MAX_COPIES; ++copies) {
 		int new_id = copies * DUPLICATE_GENERATOR + server_id;
 
-		// Find the position where to insert the new server in hashring.
+		/* Find the position where to insert the new server in hashring. */
 		int position = find_new_position(main, &new_id, compare_with_server);
 
+		/* Increase number of elements on the hashring. */
 		main->ring_size++;
 
-		// Make space for the new server(duplicate).
+		/* Make space for the new server(duplicate). */
 		for (int i = main->ring_size - 1; i > position; --i)
 			main->hash_ring[i] = main->hash_ring[i - 1];
 
-		// Initialize info in hashring.
+		/* Initialize info in hashring. */
 		main->hash_ring[position].new_id = new_id;
 		main->hash_ring[position].origin_server_id = server_id;
 		main->hash_ring[position].server = init_server_memory();
 
 		if (main->ring_size != 1) {
 			int next_server = (position + 1) % main->ring_size;
-			// Redistribute all items from the following server.
-			hashtable_t *server_data = main->hash_ring[next_server].server->storage;
-			for (int i = 0; i < HMAX; ++i) {
+			/* Redistribute all items from the following server. */
+			hashtable_t *server_data =
+			    main->hash_ring[next_server].server->storage;
+
+			for (unsigned int i = 0; i < server_data->hmax; ++i) {
+				/* Redistribute all items from the current bucket. */
 				unsigned int index_to_erase = 0;
 				while (index_to_erase < server_data->buckets[i]->size) {
-					ll_node_t *to_remove = ll_get_nth_node(server_data->buckets[i], index_to_erase);
-					if (to_remove == NULL) break;
-					char *copie = calloc(strlen((char *)((info *)to_remove->data)->key) + 1, sizeof(char));
-					strcpy(copie, (char *)((info *)to_remove->data)->key);
-					char *copie2 = calloc(strlen((char *)((info *)to_remove->data)->value) + 1, sizeof(char));
-					strcpy(copie2, (char *)((info *)to_remove->data)->value);
-					server_data = ht_remove_entry(server_data, copie);
-					int trash = 0;
-					loader_store(main, copie, copie2, &trash);
-					free(to_remove);
-					to_remove = NULL;
-					free(copie);
-					free(copie2);
-					if (trash == next_server)
+					ll_node_t *to_remove = ll_get_nth_node
+						(server_data->buckets[i], index_to_erase);
+
+					/* Extract data from current node. */
+					char *key = (char *)((info *)to_remove->data)->key;
+					char *value = (char *)((info *)to_remove->data)->value;
+
+					/* Make copies, data might be erased from memory. */
+					char *copy_key = calloc(strlen(key) + 1, sizeof(char));
+					strcpy(copy_key, (char *)((info *)to_remove->data)->key);
+					char *copy_value = calloc(strlen(value) + 1, sizeof(char));
+					strcpy(copy_value, (char *)((info *)to_remove->data)->value);
+
+					/* Erase node from current server and redistribute it. */
+					ht_remove_entry(server_data, copy_key);
+					int new_server_parent = 0;
+					loader_store(main, copy_key, copy_value, &new_server_parent);
+
+					/* Erase aux variables from memory. */
+					free(copy_key);
+					free(copy_value);
+
+					/* Element's new server parent is the same as the old. */
+					if (new_server_parent == next_server)
 						index_to_erase++;
 				}
 			}
+			// main->hash_ring[next_server].server->storage =
+			// resize(main->hash_ring[next_server].server->storage);
+			// server_data = resize(server_data);
 		}
 	}
 }
 
 void loader_remove_server(load_balancer *main, int server_id)
 {
-	// Remove the server with all the duplicates.
+	/* Remove the server with all the duplicates. */
 	for (unsigned int copies = 0; copies < MAX_COPIES; ++copies) {
 		int new_id = copies * 100000 + server_id;
 
-		// Find the position of the duplicate on hashring.
+		/* Find the position of the duplicate on hashring. */
 		int position = find_new_position(main, &new_id, compare_with_server);
 
-		// Track the server to be removed.
+		/* Track the server to be removed. */
 		hash_ring_elem to_erase_elem = main->hash_ring[position];
 
-		// Clear space.
+		/* Clear space. */
 		for (int i = position; i < (int)main->ring_size - 1; ++i)
 			main->hash_ring[i] = main->hash_ring[i + 1];
 
-		// Erase last element.
+		/* Erase last element. */
 		main->hash_ring[main->ring_size - 1].server = NULL;
 
-		// Redistribute all items from the server to
-		// be erased if we still have servers in loader.
+		/* Redistribute all items from the server to */
+		/* be erased if we still have servers in loader. */
 		main->ring_size--;
 		if (main->ring_size != 0) {
 			hashtable_t *to_erase_server = to_erase_elem.server->storage;
 			for (int i = 0; i < HMAX; ++i) {
 				while (to_erase_server->buckets[i]->size) {
 					ll_node_t *removed = ll_remove_nth_node(to_erase_server->buckets[i], 0);
-					int trash = 0;
-					loader_store(main, ((info *)removed->data)->key, ((info *)removed->data)->value, &trash);
+					int get_server = 0;
+					char *key = ((info *)removed->data)->key;
+					char *value = ((info *)removed->data)->value;
+					loader_store(main, key, value, &get_server);
 					to_erase_server->key_val_free_function(removed->data);
 					free(removed);
 					removed = NULL;
 				}
-			}	
-			// Erase server from memory.
-			ht_free(to_erase_server);	
+			}
+			/* Erase server from memory. */
+			ht_free(to_erase_server);
 			free(to_erase_elem.server);
 			to_erase_elem.server = NULL;
 		}
@@ -166,4 +186,3 @@ void free_load_balancer(load_balancer *main) {
 	free(main);
 	main = NULL;
 }
-

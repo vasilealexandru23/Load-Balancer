@@ -26,10 +26,13 @@ struct load_balancer {
  */
 load_balancer *init_load_balancer();
 
+/* Function that compares the hashes of the two servers, a & b. */
 unsigned int compare_with_server(void *a, void *b);
 
+/* Function that compares the hashes of server a & key b. */
 unsigned int compare_with_key(void *a, void *b);
 
+/* Funcion that finds the position where to insert data on hashring. */
 int find_new_position(load_balancer *main, void *data,
 		unsigned int (*compare_function)(void *, void *));
 
@@ -106,4 +109,3 @@ void loader_add_server(load_balancer *main, int server_id);
 void loader_remove_server(load_balancer *main, int server_id);
 
 #endif /* LOAD_BALANCER_H_ */
-

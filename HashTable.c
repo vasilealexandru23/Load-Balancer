@@ -1,3 +1,4 @@
+/* Copyright 2023 <> */
 #include "HashTable.h"
 
 int compare_function_strings(void *a, void *b)
@@ -65,7 +66,6 @@ void *ht_get(hashtable_t *ht, void *key)
 			return ((info *)current->data)->value;
 		current = current->next;
 	}
-
 	return NULL;
 }
 
@@ -76,7 +76,7 @@ int ht_has_key(hashtable_t *ht, void *key)
 	return 0;
 }
 
-hashtable_t *ht_put(hashtable_t *ht, void *key, unsigned int key_size,
+void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	void *value, unsigned int value_size)
 {
 	unsigned int index = ht->hash_function(key) % ht->hmax;
@@ -85,7 +85,7 @@ hashtable_t *ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 		void *current_key = ((info *)current->data)->key;
 		if (!ht->compare_function(current_key, key)) {
 			memcpy(((info *)current->data)->value, value, value_size);
-			return ht;
+			return;
 		}
 		current = current->next;
 	}
@@ -96,27 +96,34 @@ hashtable_t *ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	memcpy(new_node.value, value, value_size);
 	ll_add_nth_node(ht->buckets[index], 0, &new_node);
 	ht->size++;
-	// Verific daca am ajuns la 75% din capacitatea dictionarului.
-	// if (4 * ht->size >= 3 * ht->hmax) {
-	// 	hashtable_t *new_ht = ht_create(2 * ht->hmax, ht->hash_function,
-	// 									ht->compare_function,
-	// 									ht->key_val_free_function);
-	// 	for (unsigned int i = 0; i < ht->hmax; ++i) {
-	// 		ll_node_t *current = ht->buckets[i]->head;
-	// 		while (current != NULL) {
-	// 			info *data = ((info *)current->data);
-	// 			new_ht = ht_put(new_ht, data->key, strlen((char *)data->key) + 1,
-	// 							data->value, strlen((char *)data->value) + 1);
-	// 			current = current->next;
-	// 		}
-	// 	}
-	// 	ht_free(ht);
-	// 	return new_ht;
-	// }
-	return ht;
+	return;
 }
 
-hashtable_t *ht_remove_entry(hashtable_t *ht, void *key)
+hashtable_t *resize(hashtable_t *src) {
+	// unsigned int new_size = 0;
+	// if (4 * src->size >= 3 * src->hmax)
+	// 	new_size = 2 * src->hmax;
+	// else if (src->hmax >= 4 * src->size)
+	// 	new_size = src->hmax / 2;
+	// if (new_size == 0)
+	// 	return src;
+	hashtable_t *new_ht = ht_create(2 * src->hmax, src->hash_function,
+									src->compare_function,
+									src->key_val_free_function);
+	for (unsigned int i = 0; i < src->hmax; ++i) {
+		ll_node_t *current = src->buckets[i]->head;
+		while (current != NULL) {
+			info *data = ((info *)current->data);
+			ht_put(new_ht, data->key, strlen((char *)data->key) + 1,
+							data->value, strlen((char *)data->value) + 1);
+			current = current->next;
+		}
+	}
+	ht_free(src);
+	return new_ht;
+}
+
+void ht_remove_entry(hashtable_t *ht, void *key)
 {
 	unsigned int index = ht->hash_function(key) % ht->hmax;
 	ll_node_t *current = ht->buckets[index]->head;
@@ -126,46 +133,19 @@ hashtable_t *ht_remove_entry(hashtable_t *ht, void *key)
 		if (!ht->compare_function(current_key, key)) {
 			ll_node_t *remove = ll_remove_nth_node(ht->buckets[index], location);
 			ht->key_val_free_function(remove->data);
-			// free(remove);
-			// remove = NULL;
+			free(remove);
+			remove = NULL;
 			if (ht->buckets[index]->size == 0)
 				ht->size--;
+			return;
 		}
 		location++;
 		current = current->next;
 	}
-	// Verific daca am ajuns la 25% din capacitatea dictionarului.
-	/*
-	if (ht->hmax >= 4 * ht->size) {
-		hashtable_t *new_ht = ht_create(ht->hmax / 2, ht->hash_function,
-						ht->compare_function,
-						ht->key_val_free_function);
-		for (unsigned int i = 0; i < ht->hmax; ++i) {
-			ll_node_t *prev = NULL;
-			ll_node_t *current = ht->buckets[i]->head;
-			while (current != NULL) {
-				info *data = ((info *)current->data);
-				new_ht = ht_put(new_ht, data->key, strlen((char *)data->key) + 1,
-						data->value, strlen((char *)data->value) + 1);
-				free(((info *)(current->data))->key);
-				free(((info *)(current->data))->value);
-				prev = current;
-				current = current->next;
-				free(prev->data);
-				free(prev);
-			}
-			free(ht->buckets[i]);
-		}
-		free(ht->buckets);
-		free(ht);
-		return new_ht;
-	}
-	*/
-	return ht;
 }
 
 void ht_free(hashtable_t *ht)
-{	
+{
 	if (!ht)
 		return;
 	for (unsigned int i = 0; i < ht->hmax; ++i) {
@@ -181,4 +161,3 @@ void ht_free(hashtable_t *ht)
 	free(ht);
 	ht = NULL;
 }
-
