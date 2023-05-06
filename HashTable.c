@@ -43,10 +43,15 @@ hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 		int (*compare_function)(void*, void*),
 		void (*key_val_free_function)(void*))
 {
+	/* Alloc data. */
 	hashtable_t *ht = malloc(sizeof(hashtable_t));
+	DIE(!ht, "Malloc for hashtable failed!");
 	ht->buckets = malloc(hmax * sizeof(linked_list_t *));
+	DIE(!ht, "Malloc for buckets failed!");
 	for (unsigned int i = 0; i < hmax; ++i)
 		ht->buckets[i] = ll_create(sizeof(info));
+
+	/* Initialize data. */
 	ht->size = 0;
 	ht->hmax = hmax;
 	ht->hash_function = hash_function;
@@ -57,7 +62,9 @@ hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 
 void *ht_get(hashtable_t *ht, void *key)
 {
-	if (ht == NULL || ht->size == 0) return NULL;
+	if (ht == NULL || ht->size == 0)
+		return NULL;
+
 	unsigned int index = ht->hash_function(key) % ht->hmax;
 	ll_node_t *current = ht->buckets[index]->head;
 	while (current != NULL) {
@@ -72,8 +79,7 @@ void *ht_get(hashtable_t *ht, void *key)
 int ht_has_key(hashtable_t *ht, void *key)
 {
 	void *value = ht_get(ht, key);
-	if (value) return 1;
-	return 0;
+	return (value ? 1 : 0);
 }
 
 void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
@@ -89,25 +95,36 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 		}
 		current = current->next;
 	}
+
+	/* Create new entry. */
 	info new_node;
 	new_node.key = malloc(key_size);
+	DIE(!new_node.key, "Malloc for key failed!");
 	memcpy(new_node.key, key, key_size);
+
 	new_node.value = malloc(value_size);
+	DIE(!new_node.key, "Malloc for value failed!");
 	memcpy(new_node.value, value, value_size);
+
 	ll_add_nth_node(ht->buckets[index], 0, &new_node);
 	ht->size++;
 	return;
 }
 
-hashtable_t *resize(hashtable_t *src) {
-	// unsigned int new_size = 0;
-	// if (4 * src->size >= 3 * src->hmax)
-	// 	new_size = 2 * src->hmax;
-	// else if (src->hmax >= 4 * src->size)
-	// 	new_size = src->hmax / 2;
-	// if (new_size == 0)
-	// 	return src;
-	hashtable_t *new_ht = ht_create(2 * src->hmax, src->hash_function,
+hashtable_t *resize(hashtable_t *src)
+{
+	/* Compute new size for new hashtable. */
+	unsigned int new_size = 0;
+	if (4 * src->size >= 3 * src->hmax)
+		new_size = 2 * src->hmax;
+	else if (src->hmax >= 4 * src->size)
+		new_size = src->hmax / 2;
+	if (new_size == 0)
+		return src;
+
+	/* Create new hashtable and redistribute all */
+	/* items from the old hashtable to the new hashtable. */
+	hashtable_t *new_ht = ht_create(new_size, src->hash_function,
 									src->compare_function,
 									src->key_val_free_function);
 	for (unsigned int i = 0; i < src->hmax; ++i) {

@@ -14,6 +14,7 @@ struct hash_ring_elem {
 typedef struct load_balancer load_balancer;
 struct load_balancer {
 	unsigned int number_servers;
+	unsigned int ring_capacity;
 	unsigned int ring_size;
 	hash_ring_elem *hash_ring;
 };
@@ -35,6 +36,9 @@ unsigned int compare_with_key(void *a, void *b);
 /* Funcion that finds the position where to insert data on hashring. */
 int find_new_position(load_balancer *main, void *data,
 		unsigned int (*compare_function)(void *, void *));
+
+/* Function that check and realloc the hashring if it's the case. */
+void check_realloc(load_balancer *main);
 
 /**
  * free_load_balancer() - frees the memory of every field that is related to the

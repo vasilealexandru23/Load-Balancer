@@ -4,9 +4,6 @@
 
 #include "load_balancer.h"
 
-#define MAX_HASH 100000
-#define MAX_SERVERS 99999
-#define MAX_HASH_RING_SIZE 1000
 #define MAX_COPIES 3
 #define DUPLICATE_GENERATOR 100000
 
@@ -15,10 +12,14 @@ load_balancer *init_load_balancer()
 	/* Alloc and initialize the load balancer. */
 	load_balancer *main_server = malloc(sizeof(load_balancer));
 	DIE(!main_server, "Malloc load_balancer failed!");
+
 	main_server->number_servers = 0;
 	main_server->ring_size = 0;
-	main_server->hash_ring = calloc(MAX_HASH_RING_SIZE, sizeof(hash_ring_elem));
-	DIE(!main_server->hash_ring, "Malloc hashring failed!");
+	main_server->ring_capacity = 1;
+
+	main_server->hash_ring = calloc(1, sizeof(hash_ring_elem));
+	DIE(!main_server->hash_ring, "Calloc hashring failed!");
+
 	return main_server;
 }
 
@@ -35,6 +36,10 @@ unsigned int compare_with_key(void *a, void *b)
 int find_new_position(load_balancer *main, void *data,
 		unsigned int (*compare_function)(void *, void *))
 {
+	/* Check if the load_balancer is empty. */
+	if (!main->ring_size)
+		return 0;
+
 	int low = 0;
 	int high = main->ring_size - 1;
 	while (low < high) {
@@ -52,6 +57,30 @@ int find_new_position(load_balancer *main, void *data,
 	return low;
 }
 
+void check_realloc(load_balancer *main)
+{
+	/* Find new size for realloc(if it's the case). */
+	unsigned int new_size = 0;
+
+	if (4 * main->ring_size >= 3 * main->ring_capacity) {
+		main->ring_capacity *= 2;
+		new_size = main->ring_capacity;
+	} else if (main->ring_capacity >= 4 * main->ring_size) {
+		main->ring_capacity /= 2;
+		new_size = main->ring_capacity;
+	}
+
+	/* Check if we need to resize the hashring. */
+	if (!new_size)
+		return;
+
+	/* Do the resize. */
+	hash_ring_elem *tmp =
+	    realloc(main->hash_ring, new_size * sizeof(hash_ring_elem));
+	DIE(!tmp, "Realloc hashring failed!");
+	main->hash_ring = tmp;
+}
+
 void loader_add_server(load_balancer *main, int server_id)
 {
 	/* Create the server with all the duplicates. */
@@ -63,6 +92,7 @@ void loader_add_server(load_balancer *main, int server_id)
 
 		/* Increase number of elements on the hashring. */
 		main->ring_size++;
+		check_realloc(main);
 
 		/* Make space for the new server(duplicate). */
 		for (int i = main->ring_size - 1; i > position; --i)
@@ -110,9 +140,9 @@ void loader_add_server(load_balancer *main, int server_id)
 						index_to_erase++;
 				}
 			}
-			// main->hash_ring[next_server].server->storage =
-			// resize(main->hash_ring[next_server].server->storage);
-			// server_data = resize(server_data);
+			/* Check for resize. */
+			main->hash_ring[next_server].server->storage =
+			resize(main->hash_ring[next_server].server->storage);
 		}
 	}
 }
@@ -121,7 +151,7 @@ void loader_remove_server(load_balancer *main, int server_id)
 {
 	/* Remove the server with all the duplicates. */
 	for (unsigned int copies = 0; copies < MAX_COPIES; ++copies) {
-		int new_id = copies * 100000 + server_id;
+		int new_id = copies * DUPLICATE_GENERATOR + server_id;
 
 		/* Find the position of the duplicate on hashring. */
 		int position = find_new_position(main, &new_id, compare_with_server);
@@ -139,15 +169,22 @@ void loader_remove_server(load_balancer *main, int server_id)
 		/* Redistribute all items from the server to */
 		/* be erased if we still have servers in loader. */
 		main->ring_size--;
+		check_realloc(main);
 		if (main->ring_size != 0) {
 			hashtable_t *to_erase_server = to_erase_elem.server->storage;
-			for (int i = 0; i < HMAX; ++i) {
+			for (unsigned int i = 0; i < to_erase_server->hmax; ++i) {
 				while (to_erase_server->buckets[i]->size) {
 					ll_node_t *removed = ll_remove_nth_node(to_erase_server->buckets[i], 0);
 					int get_server = 0;
+
+					/* Get pair <key, value> from node. */
 					char *key = ((info *)removed->data)->key;
 					char *value = ((info *)removed->data)->value;
+
+					/* Redistribute the pair in loader. */
 					loader_store(main, key, value, &get_server);
+
+					/* Free memory. */
 					to_erase_server->key_val_free_function(removed->data);
 					free(removed);
 					removed = NULL;
@@ -163,20 +200,24 @@ void loader_remove_server(load_balancer *main, int server_id)
 
 void loader_store(load_balancer *main, char *key, char *value, int *server_id)
 {
+	/* Add new pair <key, value> to the load balancer. */
 	*server_id = find_new_position(main, key, compare_with_key);
 	server_store(main->hash_ring[*server_id].server, key, value);
 }
 
 char *loader_retrieve(load_balancer *main, char *key, int *server_id)
 {
+	/* Retrieve value from pair <key, value> from the load balancer. */
 	int position = find_new_position(main, key, compare_with_key);
 	*server_id = main->hash_ring[position].origin_server_id;
 	return ht_get(main->hash_ring[position].server->storage, key);
 }
 
-void free_load_balancer(load_balancer *main) {
-	for (int i = 0; i < MAX_HASH_RING_SIZE; ++i) {
-		if (main->hash_ring[i].server != NULL) {
+void free_load_balancer(load_balancer *main)
+{
+	/* Iterate and erase all memory from all servers. */
+	for (unsigned int i = 0; i < main->ring_size; ++i) {
+		if (main->hash_ring[i].server) {
 			ht_free(main->hash_ring[i].server->storage);
 			free(main->hash_ring[i].server);
 			main->hash_ring[i].server = NULL;

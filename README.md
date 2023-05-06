@@ -14,35 +14,24 @@
 	added (with binary search) and then calling the function that store an object
 	into a hashmap.
 
-	* **loader_retrieve(char\* key)** : 
+	* **loader_retrieve(char\* key)** :  Function by which a product is retrieved
+	from load balancer with a given key. It is done by finding the first position on hashring whose server has a bigger hash then the hash of the key. And then calling
+	the function that get a value from a hashmap.
 
-	* **loader_add_server(int server_id)** : 
+	* **loader_add_server(int server_id)** :  Function that adds a new server to the load balancer with a given id together with the two duplicates. It is done by
+	finding for every id the position where to insert the new server (duplicate) in
+	the hashring, and then then redistributing the elements from the following server
+	(consistent hashing).
 
-	* **loader_remove_server(int server_id)** : 
+	* **loader_remove_server(int server_id)** : Function that removes a given server from the load balancer together with all the duplicates. It is done by
+	finding for every id the position from where to erase the server (duplicate) in
+	the hashring, and then redistributing the elements from the current server
+	to the following one. After the current server is empty (all elements have been redistributed) we erase the server from memory (and from hashring).
 
-	* **server_store(char\* key, char\* value)** : 
+	* **server_store(char\* key, char\* value)** : Function that stores a pair <key, value> in a server.
 
-	* **server_retrieve(char\* key)** : 
+	* **server_retrieve(char\* key)** : Function that retrieves value from a pair <key, value> from a server. 
 
-	* **server_remove(char\* key)** : 
+	* **server_remove(char\* key)** : Function that removes a pair <key, value> from a server.
 
-* **Organizarea fisierelor** : 
-
-### Comentarii asupra temei:
-
-* Crezi că ai fi putut realiza o implementare mai bună?
-	* Se pot face diverse optimizari :
-		* Adaugarea in structura de lista a unui pointer la sfarsitul listei
-		(dll_node_t *tail), pentru a evita parcurgerile in scopul aflarii ultimului
-		nod dintr-o lista.
-		* Se puteau gasi formule pentru adaugarea in rw_buffer, dar crestea
-		ambiguitatea programului si riscul la eroarea unor case-uri imprevizibile.
-* Ce ai invățat din realizarea acestei teme?
-	* Cum functioneaza un alocator de memorie virtual.
-* Alte comentarii
-	* Descrierea temei este sumara. Exista teste, in care utilizatorul poate
-	da comenzi imprevizibile (incorecte), despre care nu se vorbeste in tema.
-	(Nu este specificat cat de mult poate gresi un utilizator in folosirea
-	programului).
-
-### (Opțional) Resurse / Bibliografie:
+#
